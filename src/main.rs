@@ -22,49 +22,22 @@ fn main() {
             .expect("Error al ejecutar el comando de instalación de Chocolatey");
 
         // Añadir Chocolatey al PATH
-        env::set_var("PATH", format!("{};C:\\ProgramData\\chocolatey\\bin", env::var("PATH").unwrap()));
+        env::set_var(
+            "PATH",
+            format!(
+                "{};C:\\ProgramData\\chocolatey\\bin",
+                env::var("PATH").unwrap()
+            ),
+        );
     }
 
     // Comprobar si OpenJDK 17 está instalado
-    println!("Comprobando si OpenJDK 17 está instalado...");
-    let output = Command::new("powershell")
-        .arg("Get-Command java")
-        .output()
-        .expect("Error al ejecutar el comando 'powershell'");
-
-    if !output.status.success() {
-        // OpenJDK 17 no está instalado, instalarlo
-        println!("OpenJDK 17 no está instalado, instalando...");
-        let install_command = "choco install -y openjdk17 --version=17.0.2";
-
-        Command::new("powershell")
-            .arg(install_command)
-            .output()
-            .expect("Error al ejecutar el comando de instalación de OpenJDK");
-    }
+    check_and_install("java", "openjdk17 --version=17.0.2", "OpenJDK 17");
 
     // Comprobar si Maven está instalado
-
-    println!("Comprobando si Maven está instalado...");
-
-    let output = Command::new("powershell")
-        .arg("Get-Command mvn")
-        .output()
-        .expect("Error al ejecutar el comando 'powershell'");
-
-    if !output.status.success() {
-        // Maven no está instalado, instalarlo
-        println!("Maven no está instalado, instalando...");
-        let install_command = "choco install -y maven";
-
-        Command::new("powershell")
-            .arg(install_command)
-            .output()
-            .expect("Error al ejecutar el comando de instalación de Maven");
-    }
+    check_and_install("mvn", "maven --version=3.8.4", "Maven");
 
     // Comprobar si Postgres está instalado
-
     println!("Comprobando si Postgres está instalado...");
 
     let output = Command::new("powershell")
@@ -89,48 +62,49 @@ fn main() {
         Command::new("postgres.exe")
             .output()
             .expect("Error al ejecutar el comando de instalación de Postgres");
-
     }
 
     // Comprobar si Git está instalado
+    check_and_install("git", "git", "Git");
 
-    println!("Comprobando si Git está instalado...");
+    // check and install nodejs lts
+    check_and_install("node", "nodejs-lts", "NodeJS");
 
+    // Comprobar si Visual Studio Code está instalado
     let output = Command::new("powershell")
-        .arg("Get-Command git")
+        .arg("Get-Command code")
         .output()
         .expect("Error al ejecutar el comando 'powershell'");
 
     if !output.status.success() {
-        // Git no está instalado, instalarlo
-        println!("Git no está instalado, instalando...");
-        let install_command = "choco install -y git";
+        // Preguntar si desea instalar Visual Studio Code
+        let mut input = String::new();
+        print!("¿Desea instalar Visual Studio Code? (s/n) ");
+        let _ = stdout().flush();
+        stdin()
+            .read_line(&mut input)
+            .expect("Error al leer la entrada del usuario");
 
-        Command::new("powershell")
-            .arg(install_command)
-            .output()
-            .expect("Error al ejecutar el comando de instalación de Git");
-    }
+        if input.trim().to_lowercase() == "s" {
+            // Instalar Visual Studio Code
+            println!("Instalando Visual Studio Code...");
+            let install_command = "choco install -y vscode";
 
-    // Preguntar si desea instalar Visual Studio Code
-    let mut input = String::new();
-    print!("¿Desea instalar Visual Studio Code? (s/n) ");
-    let _ = stdout().flush();
-    stdin().read_line(&mut input).expect("Error al leer la entrada del usuario");
-
-    if input.trim().to_lowercase() == "s" {
-        // Instalar Visual Studio Code
-        println!("Instalando Visual Studio Code...");
-        let install_command = "choco install -y vscode";
-
-        Command::new("powershell")
-            .arg(install_command)
-            .output()
-            .expect("Error al ejecutar el comando de instalación de Visual Studio Code");
+            Command::new("powershell")
+                .arg(install_command)
+                .output()
+                .expect("Error al ejecutar el comando de instalación de Visual Studio Code");
+        }
     }
 
     // agregar vscode al path
-    env::set_var("PATH", format!("{};C:\\Program Files\\Microsoft VS Code\\bin", env::var("PATH").unwrap()));
+    env::set_var(
+        "PATH",
+        format!(
+            "{};C:\\Program Files\\Microsoft VS Code\\bin",
+            env::var("PATH").unwrap()
+        ),
+    );
 
     // verificar si "code" está en el path
     let output = Command::new("powershell")
@@ -143,7 +117,9 @@ fn main() {
         let mut input = String::new();
         print!("¿Desea instalar plugins para Visual Studio Code para Java y Spring Boot? (s/n) ");
         let _ = stdout().flush();
-        stdin().read_line(&mut input).expect("Error al leer la entrada del usuario");
+        stdin()
+            .read_line(&mut input)
+            .expect("Error al leer la entrada del usuario");
 
         if input.trim().to_lowercase() == "s" {
             // Instalar plugins para Visual Studio Code para Java y Spring Boot
@@ -159,9 +135,51 @@ fn main() {
         }
     }
 
+    // Pregunto si desea instalar IntelliJ IDEA Community Edition
+    let mut input = String::new();
+    print!("¿Desea instalar IntelliJ IDEA Community Edition? (s/n) ");
+    let _ = stdout().flush();
+    stdin()
+        .read_line(&mut input)
+        .expect("Error al leer la entrada del usuario");
+
+    if input.trim().to_lowercase() == "s" {
+        // Instalar IntelliJ IDEA Community Edition
+        println!("Instalando IntelliJ IDEA Community Edition...");
+        let install_command = "choco install -y intellijidea-community";
+
+        Command::new("powershell")
+            .arg(install_command)
+            .output()
+            .expect("Error al ejecutar el comando de instalación de IntelliJ IDEA Community Edition");
+    }
+    
+
     // pause the console
     let mut input = String::new();
     print!("Presione ENTER para continuar...");
     let _ = stdout().flush();
-    stdin().read_line(&mut input).expect("Error al leer la entrada del usuario");
+    stdin()
+        .read_line(&mut input)
+        .expect("Error al leer la entrada del usuario");
+}
+
+fn check_and_install(cmd: &str, install_cmd: &str, name: &str) {
+    println!("Comprobando si {} está instalado...", name);
+
+    let output = Command::new("powershell")
+        .arg(format!("Get-Command {}", cmd))
+        .output()
+        .expect("Error al ejecutar el comando 'powershell'");
+
+    if !output.status.success() {
+        // cmd no está instalado, instalarlo
+        println!("{} no está instalado, instalando...", name);
+        let install_command = format!("choco install -y {}", install_cmd);
+
+        Command::new("powershell")
+            .arg(install_command)
+            .output()
+            .expect(format!("Error al ejecutar el comando de instalación de {}", name).as_str());
+    }
 }
