@@ -1,0 +1,27 @@
+[package]
+name = "installer"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = { version = "0.11.14", features = ["blocking"] }
+#tokio minimum feature async main
+#tokio = { version = "1.25.0", features = ["full"] }
+
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.'cfg(target_os="windows")'.build-dependencies]
+winres = "0.1.12"
+
+[profile.release]
+lto = true
+debug = false
+opt-level = "z"
+strip = "symbols"
+codegen-units = 1
+
