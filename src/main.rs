@@ -1,3 +1,4 @@
+use question::{Answer, Question};
 use std::env;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
@@ -16,7 +17,6 @@ fn main() {
         let install_command = "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))";
 
         let mut process = Command::new("powershell")
-            .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .arg(install_command)
             .spawn()
@@ -35,6 +35,7 @@ fn main() {
     }
 
     // Comprobar si OpenJDK 17 está instalado
+    println!("\n\nComprobando si OpenJDK 17 está instalado...");
 
     // Obtiene todos los ejecutables en el PATH de java y ve si existe JAVA_HOME
     let executables = which_all("java");
@@ -44,25 +45,20 @@ fn main() {
 
     if let Ok(executables) = executables {
         for executable in executables {
-            let process = Command::new("powershell")
-                .stdout(Stdio::piped())
-                .args([format!(".\"{}\"", executable.display()).as_str(), "-version"])
-                .spawn()
+            let output = Command::new(executable.clone())
+                .arg("-version")
+                .output()
                 .expect("Error al ejecutar el comando 'java -version'");
 
-            let output = process
-                .wait_with_output()
-                .expect("Error al esperar la salida del comando");
-
             if output.status.success() {
-                let output = String::from_utf8_lossy(&output.stdout).to_string();
-
-                if output.contains("openjdk version \"17") {
+                let stdout = String::from_utf8_lossy(&output.stderr).to_string();
+                // Comprueba si el stdout contiene "openjdk version \"17" y OpenJDK Runtime Environment (build 17
+                if stdout.contains("openjdk version \"17")
+                    && stdout.contains("OpenJDK Runtime Environment (build 17")
+                {
                     executable_path = Some(executable);
                     break;
                 }
-
-                println!("{}", output);
             }
         }
     }
@@ -81,16 +77,17 @@ fn main() {
             .output()
             .expect("Error al obtener la propiedad 'java.home'");
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stdout_s = String::from_utf8_lossy(&output.stderr).to_string();
 
-        let java_home = stdout.split("java.home = ").collect::<Vec<&str>>()[1]
-            .split("")
+        let java_home = stdout_s.split("java.home = ").collect::<Vec<&str>>()[1]
+            .split("\n")
             .collect::<Vec<&str>>()[0]
             .to_string();
 
-        print!("java.home = {}", java_home);
+        // get env var JAVA_HOME
+        let java_home_env = env::var("JAVA_HOME").unwrap_or("".to_string());
 
-        if java_home.is_empty() || java_home != java_home {
+        if java_home_env.is_empty() || java_home_env != java_home {
             // Configurar JAVA_HOME
             println!("Configurando JAVA_HOME...");
 
@@ -108,14 +105,14 @@ fn main() {
     check_and_install("mvn", "maven --version=3.8.4", "Maven");
 
     // Comprobar si Postgres está instalado
-    println!("Comprobando si Postgres está instalado...");
+    println!("\n\nComprobando si Postgres está instalado...");
 
     let output = which("psql");
 
     if output.is_err() {
         // use gui installer from https://sbp.enterprisedb.com/getfile.jsp?fileid=1258323 with reqwest
         // Postgres no está instalado, instalarlo
-        println!("Postgres no está instalado, instalando...");
+        println!("\nPostgres no está instalado, instalando...");
         println!("Descargando instalador de Postgres...");
         let target = "https://sbp.enterprisedb.com/getfile.jsp?fileid=1258323";
         let mut resp = reqwest::blocking::get(target).unwrap();
@@ -143,14 +140,14 @@ fn main() {
 
     if output.is_err() {
         // Preguntar si desea instalar Visual Studio Code
-        let mut input = String::new();
-        print!("¿Desea instalar Visual Studio Code? (s/n) ");
-        let _ = stdout().flush();
-        stdin()
-            .read_line(&mut input)
-            .expect("Error al leer la entrada del usuario");
+        let ans = Question::new("\n\n¿Desea instalar Visual Studio Code?")
+            .acceptable(vec!["s", "n"])
+            .default(Answer::YES)
+            .show_defaults()
+            .until_acceptable()
+            .ask();
 
-        if input.trim().to_lowercase() == "s" {
+        if let Some(Answer::YES) = ans {
             // Instalar Visual Studio Code
             install("vscode", "Visual Studio Code");
         }
@@ -170,22 +167,23 @@ fn main() {
 
     if output.is_ok() {
         // Preguntar si desea instalar plugins para Visual Studio Code para Java y Spring Boot
-        let mut input = String::new();
-        print!("¿Desea instalar plugins para Visual Studio Code para Java y Spring Boot? (s/n) ");
-        let _ = stdout().flush();
-        stdin()
-            .read_line(&mut input)
-            .expect("Error al leer la entrada del usuario");
+        let ans = Question::new(
+            "\n\n¿Desea instalar plugins para Visual Studio Code para Java y Spring Boot?",
+        )
+        .acceptable(vec!["s", "n"])
+        .default(Answer::YES)
+        .show_defaults()
+        .until_acceptable()
+        .ask();
 
-        if input.trim().to_lowercase() == "s" {
+        if let Some(Answer::YES) = ans {
             // Instalar plugins para Visual Studio Code para Java y Spring Boot
-            println!("Instalando plugins para Visual Studio Code para Java y Spring Boot...");
+            println!("\nInstalando plugins para Visual Studio Code para Java y Spring Boot...");
 
             // install vscjava.vscode-spring-initializr and vscjava.vscode-java-pack
             let install_command = "code --install-extension vscjava.vscode-spring-initializr --install-extension vscjava.vscode-java-pack";
 
             let mut process = Command::new("powershell")
-                .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .arg(install_command)
                 .spawn()
@@ -196,14 +194,14 @@ fn main() {
     }
 
     // Pregunto si desea instalar IntelliJ IDEA Community Edition
-    let mut input = String::new();
-    print!("¿Desea instalar IntelliJ IDEA Community Edition? (s/n) ");
-    let _ = stdout().flush();
-    stdin()
-        .read_line(&mut input)
-        .expect("Error al leer la entrada del usuario");
+    let ans = Question::new("\n\n¿Desea instalar IntelliJ IDEA Community Edition?")
+        .acceptable(vec!["s", "n"])
+        .default(Answer::YES)
+        .show_defaults()
+        .until_acceptable()
+        .ask();
 
-    if input.trim().to_lowercase() == "s" {
+    if let Some(Answer::YES) = ans {
         // Instalar IntelliJ IDEA Community Edition
         install("intellijidea-community", "IntelliJ IDEA Community Edition");
     }
@@ -218,22 +216,23 @@ fn main() {
 }
 
 fn check_and_install(cmd: &str, install_cmd: &str, name: &str) {
-    println!("Comprobando si {} está instalado...", name);
+    println!("\n\nComprobando si {} está instalado...", name);
 
     let output = which(cmd);
 
     if output.is_err() {
         // cmd no está instalado, instalarlo
         install(install_cmd, name);
+    } else {
+        println!("Correcto");
     }
 }
 
 fn install(install_cmd: &str, name: &str) {
-    println!("{} no está instalado, instalando...", name);
-    let install_command = format!("choco install -y {}", install_cmd);
+    println!("\n{} no está instalado, instalando...", name);
+    let install_command = format!("choco install -r -y {}", install_cmd);
 
     let process = Command::new("powershell")
-        .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .arg(install_command)
         .spawn()
