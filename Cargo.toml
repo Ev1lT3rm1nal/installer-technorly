@@ -8,15 +8,17 @@ build = "build.rs"
 
 [dependencies]
 reqwest = { version = "0.11.14", features = ["blocking"] }
+which = "4.4.0"
 #tokio minimum feature async main
 #tokio = { version = "1.25.0", features = ["full"] }
 
 
-[target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "target-feature=+crt-static"]
+[build]
+rustflags = ["-C", "link-args=/exoticlinkerswitch"]
 
 [target.'cfg(target_os="windows")'.build-dependencies]
 winres = "0.1.12"
+
 
 [profile.release]
 lto = true
